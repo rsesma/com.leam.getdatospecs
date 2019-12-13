@@ -9,8 +9,8 @@ public class GetDataFromPEC {
 		String dir;
 		String command;
 		
-        dir = args[0];
-        command = args[1];
+        command = args[0];
+        dir = args[1];
         
         ExtractMethods extract = new ExtractMethods();
         

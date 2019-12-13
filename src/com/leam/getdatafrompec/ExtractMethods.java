@@ -18,6 +18,8 @@ public class ExtractMethods {
 		    PDAcroForm form = pdf.getDocumentCatalog().getAcroForm();
 		    String producer = pdf.getDocumentInformation().getProducer();		// get form producer
 		    
+
+		    
             if (producer.toUpperCase().contains("LibreOffice".toUpperCase()) ||
                     form.getFields().size()>0) {
                 //get honor field
@@ -30,7 +32,9 @@ public class ExtractMethods {
 	    } catch (Exception e) {
 			e.printStackTrace();
 		}
-    }
+
+	    //JOptionPane.showMessageDialog(null,"");
+	}
 	
 	public void toClip(String s) {
 		Clipboard clip = Toolkit.getDefaultToolkit().getSystemClipboard();
