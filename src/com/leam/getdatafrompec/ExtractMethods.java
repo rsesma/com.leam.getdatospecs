@@ -20,6 +20,7 @@ import org.apache.pdfbox.pdmodel.interactive.form.PDAcroForm;
 import org.apache.pdfbox.pdmodel.interactive.form.PDCheckBox;
 import org.apache.pdfbox.pdmodel.interactive.form.PDComboBox;
 import org.apache.pdfbox.pdmodel.interactive.form.PDField;
+import org.apache.pdfbox.pdmodel.interactive.form.PDTextField;
 
 
 public class ExtractMethods {
@@ -242,6 +243,47 @@ public class ExtractMethods {
 		}
 	}
 	
+	public void getP(String dir, String periodo, String curso) throws IOException {
+
+		// build INSERT INTO sql with dir PEC data
+        try {
+        	File f = new File(dir); 
+        	String n = f.getName();
+        	String dni = n.substring(n.lastIndexOf("_") + 1, n.indexOf(".pdf"));
+        	String sql = "";
+			PDDocument pdf = PDDocument.load(f);
+		    PDAcroForm form = pdf.getDocumentCatalog().getAcroForm();
+		    for(PDField field : form.getFields()){
+		    	String name = field.getPartialName();
+		    	String v = "";
+		    	if (name.substring(0,1).equals("P")) {
+            		if (field instanceof PDTextField) {
+            			PDTextField ed = (PDTextField) field;				// text field: numeric or memo
+            			v = ed.getValue().replace(".", ",");
+            		}
+            		if (field instanceof PDComboBox) {
+            			PDComboBox co = (PDComboBox) field;					// combobox field: closed answer
+            			v = co.getValue().get(0);
+            		}
+
+                	sql = sql + "INSERT INTO pec_respuestas (Periodo, Curso, DNI, Pregunta, respuesta) " +
+                			"VALUES ('" + periodo + "','" + curso + "','" + dni + "','" + name.substring(1) + "','" + v + "');" +
+                			System.lineSeparator();
+		    	}
+		    }
+		    // copy sql sentence to clipboard
+		    toClip(sql);
+		    
+            // close pdf form
+            pdf.close();
+            pdf = null;
+            form = null;
+        } catch (Exception e) {
+			e.printStackTrace();
+        	JOptionPane.showMessageDialog(null, e.getMessage());
+		}
+	}
+
 	public void toClip(String s) {
 		Clipboard clip = Toolkit.getDefaultToolkit().getSystemClipboard();
 		StringSelection c = new StringSelection(s);
