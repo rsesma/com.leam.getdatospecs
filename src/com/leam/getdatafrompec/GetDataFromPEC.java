@@ -18,7 +18,11 @@ public class GetDataFromPEC {
         // params: dir, periodo, curso
         if (command.equals("getMemos")) extract.getMemos(dir, args[2], args[3]);
         // params: dir, periodo, curso
+        if (command.equals("getRespIO")) extract.getRespuestasIO(dir, args[2], args[3]);
+        // params: dir, periodo, curso
         if (command.equals("getP")) extract.getP(dir, args[2], args[3]);
+        // params: dir, periodo, curso
+        if (command.equals("getPIO1")) extract.getPIO1(dir, args[2], args[3]);
 	}
 
 }

@@ -67,26 +67,32 @@ public class ExtractMethods {
 	    			PDDocument pdf = PDDocument.load(file);
 	    		    PDAcroForm form = pdf.getDocumentCatalog().getAcroForm();
 	    		    String producer = pdf.getDocumentInformation().getProducer();		// get form producer
-	                if (producer.toUpperCase().contains("LibreOffice".toUpperCase()) ||
+	                Boolean lError = true;
+	    		    if (form != null) {
+	                	if (producer.toUpperCase().contains("LibreOffice".toUpperCase()) ||
 	                        form.getFields().size()>0) {	                	
-                        //get honor field
-                        PDCheckBox cbHonor = (PDCheckBox) form.getField("HONOR");
-                        honor = cbHonor.isChecked();
-	                } else {
-                        //the pdf is not readable
-                        lProblems = true;
-                        problems.add(dni);
-                    }	                        
+	                        //get honor field
+	                        PDCheckBox cbHonor = (PDCheckBox) form.getField("HONOR");
+	                        honor = cbHonor.isChecked();
+	                        
+	                        lError = false;
+                        }
+                    }
                     // close pdf form
                     pdf.close();
                     pdf = null;
                     form = null;
-                    
-    	            // entregada = 1 always
-    	            String c = "'" + dni + "';'" + curso + "';'" + periodo + "';" +
-    	            		((curso.equalsIgnoreCase("ST1")) ? "2" : "1") + ";1;" +
-    	            		((honor) ? "1" : "0"); 
-    	            lines.add(c);
+
+                    if (!lError) {
+	    	            // entregada = 1 always
+	    	            String c = "'" + dni + "';'" + curso + "';'" + periodo + "';" +
+	    	            		((curso.equalsIgnoreCase("ST1")) ? "2" : "1") + ";1;" +
+	    	            		((honor) ? "1" : "0"); 
+	    	            lines.add(c);
+                    } else {
+                    	lProblems = true;
+                        problems.add(dni);                    	
+                    }
 	            }
 	
 	        }
@@ -242,6 +248,55 @@ public class ExtractMethods {
 			e.printStackTrace();
 		}
 	}
+
+	public void getRespuestasIO(String dir, String periodo, String curso) throws IOException {
+        //Get the PEC files of dir
+        File folder = new File(dir);
+        FilenameFilter pdfFilter = new FilenameFilter() {
+            public boolean accept(File dir, String name) {
+                return name.toLowerCase().endsWith(".pdf");
+            }
+        };
+
+        List<String> lines = new ArrayList<>();
+        try {
+	        lines.add("periodo;curso;dni;q;n;resp");
+	        File[] listOfFiles = folder.listFiles(pdfFilter);
+	        for (File file : listOfFiles) {
+	            if (file.isFile()) {
+	            	String n = file.getName();
+	            	String dni = n.substring(n.lastIndexOf("_") + 1, n.indexOf(".pdf"));
+	            	String head = "'" + periodo + "';'" + curso + "';'" + dni + "';"; 
+
+                	PDDocument pdf = PDDocument.load(file);
+	    		    PDAcroForm form = pdf.getDocumentCatalog().getAcroForm();
+                	for (PDField field : form.getFields()){
+	    		    	String name = field.getPartialName();
+	    		    	if (name.substring(0,1).equals("M") || name.substring(0,1).equals("P")) { 
+	    		    		if (!name.substring(name.length()-1).equals("A")) {
+		    		    		String c = field.getValueAsString();
+		    		    		if (!(name.substring(0,1).equals("M") && 
+		    		    				c.replace(",", ".").matches("-?\\d+(\\.\\d+)?"))) {
+		    		    			lines.add(head + "'" + name.substring(1) + "';" +
+		    		    				name.substring(1,3) + ";'" + c.replace("'", "$") + "'");
+		    		    		}
+	    		    		}
+	    		    	}
+	    		    }
+	    			pdf.close();
+	    			pdf = null;
+                    form = null;
+	            }
+	        }
+	        
+	        Files.write(Paths.get(dir + "/respuestas.txt"), lines, Charset.forName("UTF-8"));
+	        
+	        System.out.println("End");
+        } catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
 	
 	public void getP(String dir, String periodo, String curso) throws IOException {
 
@@ -283,6 +338,50 @@ public class ExtractMethods {
         	JOptionPane.showMessageDialog(null, e.getMessage());
 		}
 	}
+	
+	
+	public void getPIO1(String dir, String periodo, String curso) throws IOException {
+
+		// build INSERT INTO sql with dir PEC data
+        try {
+        	File f = new File(dir); 
+        	String n = f.getName();
+        	String dni = n.substring(n.lastIndexOf("_") + 1, n.indexOf(".pdf"));
+        	String sql = "";
+			PDDocument pdf = PDDocument.load(f);
+		    PDAcroForm form = pdf.getDocumentCatalog().getAcroForm();
+		    for(PDField field : form.getFields()){
+		    	String name = field.getPartialName();
+		    	String v = "";
+		    	if (name.substring(0,1).equals("P") && name.substring(name.length()-1).equals("A")) {
+		    		// only the P..._A fields are of interest on IO1
+            		if (field instanceof PDTextField) {
+            			PDTextField ed = (PDTextField) field;				// text field: numeric or memo
+            			v = ed.getValue().replace(".", ",");
+            		}
+            		if (field instanceof PDComboBox) {
+            			PDComboBox co = (PDComboBox) field;					// combobox field: closed answer
+            			v = co.getValue().get(0);
+            		}
+
+                	sql = sql + "INSERT INTO pec_respuestas (Periodo, Curso, DNI, Pregunta, respuesta) " +
+                			"VALUES ('" + periodo + "','" + curso + "','" + dni + "','" + name.substring(1) + "','" + v + "');" +
+                			System.lineSeparator();
+		    	}
+		    }
+		    // copy sql sentence to clipboard
+		    toClip(sql);
+		    
+            // close pdf form
+            pdf.close();
+            pdf = null;
+            form = null;
+        } catch (Exception e) {
+			e.printStackTrace();
+        	JOptionPane.showMessageDialog(null, e.getMessage());
+		}
+	}
+	
 
 	public void toClip(String s) {
 		Clipboard clip = Toolkit.getDefaultToolkit().getSystemClipboard();
