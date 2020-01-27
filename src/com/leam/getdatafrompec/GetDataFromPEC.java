@@ -10,6 +10,9 @@ public class GetDataFromPEC {
 		
         ExtractMethods extract = new ExtractMethods();
         
+        // params: dir
+        if (command.equals("get")) extract.getDatosGeneral(dir);
+        // params: dir
         if (command.equals("getNOTA")) extract.getNotaPEC1(dir);
         // params: dir, periodo
         if (command.equals("entregaPEC1")) extract.getEntregaHonorPEC1(dir, args[2]);
