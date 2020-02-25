@@ -4,6 +4,7 @@ import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -158,7 +159,83 @@ public class ExtractMethods {
 		}
 	}
 	
-    public void getEntregaHonor(String dir, String periodo, String curso) throws IOException {  
+    public void getEntregaHonorIO(String dir, String periodo, String curso) throws IOException {
+        //Get the folders of dir
+        File folder = new File(dir);
+        FileFilter folderFilter = new FileFilter() {
+            public boolean accept(File file) {
+                return !file.isFile();
+            }
+        };
+        
+        List<String> lines = new ArrayList<>();
+        List<String> problems = new ArrayList<>();
+        Boolean lProblems = false;
+        
+        File[] folders = folder.listFiles(folderFilter);
+        for(File f : folders) {
+        	String n = f.getName();
+        	String dni = n.substring(n.lastIndexOf("_") + 1);
+        	
+            //Get the PDF files of dir
+            File subfolder = new File(f.getAbsolutePath());
+            FilenameFilter pdfFilter = new FilenameFilter() {
+                public boolean accept(File dir, String name) {
+                    return name.toLowerCase().endsWith(".pdf");
+                }
+            };
+            
+            try {
+                boolean lError = true;
+	            boolean honor = false;
+		        File[] listOfFiles = subfolder.listFiles(pdfFilter);
+		        for (File file : listOfFiles) {
+		            if (file.isFile()) {
+	                    //open pdf file
+		    			PDDocument pdf = PDDocument.load(file);
+		    		    PDAcroForm form = pdf.getDocumentCatalog().getAcroForm();
+		    		    String producer = pdf.getDocumentInformation().getProducer();		// get form producer
+		    		    if (form != null) {
+		                	if (producer.toUpperCase().contains("LibreOffice".toUpperCase()) ||
+		                        form.getFields().size()>0) {	                	
+		                        //get honor field
+		                        PDCheckBox cbHonor = (PDCheckBox) form.getField("HONOR");
+		                        honor = cbHonor.isChecked();
+		                        lError = false;
+	                        }
+	                    }
+	                    // close pdf form
+	                    pdf.close();
+	                    pdf = null;
+	                    form = null;
+		            }
+		        }
+		        
+                if (!lError) {
+    	            String c = dni + ";" +  ((honor) ? "1" : "0"); 
+    	            lines.add(c);
+                } else {
+                	lProblems = true;
+                    problems.add(dni);               	
+                }
+            } catch (Exception e) {
+    			e.printStackTrace();
+    		}
+        }
+        
+        //write data file
+        Path fdata = Paths.get(dir + "/datos_pec.txt");
+        Files.write(fdata, lines, Charset.forName("UTF-8"));
+        //write problems file
+        if (lProblems) {
+            Path fproblems = Paths.get(dir + "/problemas.txt");
+            Files.write(fproblems, problems, Charset.forName("UTF-8"));
+            JOptionPane.showMessageDialog(null,"Hay problemas.");
+        }
+
+    }
+	
+	public void getEntregaHonor(String dir, String periodo, String curso) throws IOException {  
         
         //Get the PEC files of dir
         File folder = new File(dir);
@@ -213,7 +290,7 @@ public class ExtractMethods {
 	            }
 	
 	        }
-	        //write pec1 data file
+	        //write data file
 	        Path fdata = Paths.get(dir + "/datos_pec.txt");
 	        Files.write(fdata, lines, Charset.forName("UTF-8"));
 	        //write problems file
