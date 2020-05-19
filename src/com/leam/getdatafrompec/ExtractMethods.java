@@ -256,6 +256,8 @@ public class ExtractMethods {
 	            	String n = file.getName();
 	            	String dni = n.substring(n.lastIndexOf("_") + 1, n.indexOf(".pdf"));
 		            boolean honor = false;
+		            
+		            System.out.println(dni);
 	            	
                     //open pdf file
 	    			PDDocument pdf = PDDocument.load(file);
