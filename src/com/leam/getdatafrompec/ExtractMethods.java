@@ -38,6 +38,7 @@ public class ExtractMethods {
         boolean lComments = false;
         boolean lfirst = true;
         boolean lhonor = false;
+        boolean lcomentarios = false;
         List<String> lines = new ArrayList<>();
         List<String> mlines = new ArrayList<>();
         List<String> comments = new ArrayList<>();
@@ -70,17 +71,20 @@ public class ExtractMethods {
         					String name = f.getFullyQualifiedName();
         					if (name.substring(0, 1).equalsIgnoreCase("P")) names.add(name);		// answers
         					if (name.substring(0, 1).equalsIgnoreCase("M")) memos.add(name);		// memo fields
-        					if (name.equalsIgnoreCase("HONOR")) lhonor = true;
+        					if (name.equalsIgnoreCase("HONOR")) lhonor = true;						// there's HONOR field
+        					if (name.equalsIgnoreCase("COMENT")) lcomentarios = true;				// there's COMENT field
         				}
                         Collections.sort(names);
                         Collections.sort(memos);
                         lfirst = false;
                     }
                     
-                    // build COMMENTS section
-                    if (!form.getField("COMENT").getValueAsString().isEmpty()) {
-                        lComments = true;
-                        comments.add(dni + ":" + form.getField("COMENT").getValueAsString() + "\n");
+                    if (lcomentarios) {
+	                    // build COMMENTS section
+	                    if (!form.getField("COMENT").getValueAsString().isEmpty()) {
+	                        lComments = true;
+	                        comments.add(dni + ":" + form.getField("COMENT").getValueAsString() + "\n");
+	                    }
                     }
                     // header with identification data
                     String c = "'" + form.getField("APE1").getValueAsString() + "','" +
