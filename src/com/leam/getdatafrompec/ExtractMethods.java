@@ -39,6 +39,9 @@ public class ExtractMethods {
         boolean lfirst = true;
         boolean lhonor = false;
         boolean lcomentarios = false;
+        boolean lape1 = false;
+        boolean lape2 = false;
+        boolean lnom = false;
         List<String> lines = new ArrayList<>();
         List<String> mlines = new ArrayList<>();
         List<String> comments = new ArrayList<>();
@@ -71,6 +74,9 @@ public class ExtractMethods {
         					String name = f.getFullyQualifiedName();
         					if (name.substring(0, 1).equalsIgnoreCase("P")) names.add(name);		// answers
         					if (name.substring(0, 1).equalsIgnoreCase("M")) memos.add(name);		// memo fields
+        					if (name.equalsIgnoreCase("APE1")) lape1 = true;						// there's APE1 field
+        					if (name.equalsIgnoreCase("APE2")) lape2 = true;						// there's APE2 field
+        					if (name.equalsIgnoreCase("NOMBRE")) lnom = true;						// there's NOMBRE field
         					if (name.equalsIgnoreCase("HONOR")) lhonor = true;						// there's HONOR field
         					if (name.equalsIgnoreCase("COMENT")) lcomentarios = true;				// there's COMENT field
         				}
@@ -87,9 +93,10 @@ public class ExtractMethods {
 	                    }
                     }
                     // header with identification data
-                    String c = "'" + form.getField("APE1").getValueAsString() + "','" +
-                    		form.getField("APE2").getValueAsString() + "','" + 
-                            form.getField("NOMBRE").getValueAsString() + "','" + dni + "'";
+                    String c = (lape1 ? "'" + form.getField("APE1").getValueAsString() + "'" : "null") + "," +
+                    		(lape2 ? "'" + form.getField("APE2").getValueAsString() + "'" : "null") + "," +
+                    		(lnom ? "'" + form.getField("NOMBRE").getValueAsString() + "'" : "null") + "," +
+                    		"'" + dni + "'";
                     if (lhonor) {
                     	PDCheckBox honor = (PDCheckBox) form.getField("HONOR");
                         c = c + (honor.isChecked() ? ",1" : ",0");
