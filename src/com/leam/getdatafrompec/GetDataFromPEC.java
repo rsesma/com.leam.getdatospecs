@@ -12,6 +12,8 @@ public class GetDataFromPEC {
         
         // params: dir
         if (command.equals("get")) extract.getDatosGeneral(dir);
+        // params: dir, txt sol
+        if (command.equals("getSol")) extract.getDatosSol(dir, args[2]);
         // params: dir
         if (command.equals("getNOTA")) extract.getNotaPEC1(dir);
         // params: dir, periodo

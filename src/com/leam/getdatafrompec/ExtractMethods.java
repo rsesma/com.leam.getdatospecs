@@ -3,8 +3,10 @@ package com.leam.getdatafrompec;
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileFilter;
+import java.io.FileReader;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -148,6 +150,127 @@ public class ExtractMethods {
         if (lProblems) Files.write(Paths.get(dir + "/errores.txt"), problems, Charset.forName("UTF-8"));
         // save memos, if any
         if (!memos.isEmpty()) Files.write(Paths.get(dir + "/memos.txt"), mlines, Charset.forName("UTF-8"));
+
+        JOptionPane.showMessageDialog(null, "Proceso finalizado." +
+                (lComments ? " Hay comentarios." : "") + 
+                (lProblems ? " Hay errores." : ""));
+	}
+	
+	public void getDatosSol(String dir, String sol) throws IOException { 
+        // get all the pdf files of dir
+        File folder = new File(dir);
+        FilenameFilter pdfFilter;
+        pdfFilter = (File dir1, String name) -> { return name.toLowerCase().endsWith(".pdf"); };
+        File[] PECs = folder.listFiles(pdfFilter);
+
+        boolean lProblems = false;
+        boolean lComments = false;
+        boolean lfirst = true;
+        boolean lhonor = false;
+        boolean lcomentarios = false;
+        boolean lape1 = false;
+        boolean lape2 = false;
+        boolean lnom = false;
+        List<String> lines = new ArrayList<>();
+        List<String> comments = new ArrayList<>();
+        List<String> problems = new ArrayList<>();
+        List<String> names = new ArrayList<>();
+        for (File file : PECs) {
+            if (file.isFile()) {
+            	// get dni from filename
+                String n = file.getName();
+                String dni = n.substring(n.lastIndexOf("_")+1,n.lastIndexOf("."));
+                
+                System.out.println(dni);
+
+                // open pdf form
+				PDDocument pdf = PDDocument.load(file);
+			    PDAcroForm form = pdf.getDocumentCatalog().getAcroForm();
+                
+			    String producer = pdf.getDocumentInformation().getProducer();		// get form producer                
+                if (form.getFields().size()>0) {
+                    if (!producer.substring(0,Math.min(11,producer.length())).equalsIgnoreCase("LibreOffice")) {
+                    	// if the producer is not LibreOffice, the PDF file may be corrupted
+                    	lProblems = true;
+                        problems.add(dni + "; " + producer);
+                    }
+                    
+                    if (lfirst) {
+                        // get form fields names and sort alphabetically
+        				for (PDField f : form.getFields()) {
+        					String name = f.getFullyQualifiedName();
+        					if (name.equalsIgnoreCase("APE1")) lape1 = true;						// there's APE1 field
+        					if (name.equalsIgnoreCase("APE2")) lape2 = true;						// there's APE2 field
+        					if (name.equalsIgnoreCase("NOMBRE")) lnom = true;						// there's NOMBRE field
+        					if (name.equalsIgnoreCase("HONOR")) lhonor = true;						// there's HONOR field
+        					if (name.equalsIgnoreCase("COMENT")) lcomentarios = true;				// there's COMENT field
+        				}
+        				// read sol txt line by line and get names
+        				File f= new File(sol);
+        				BufferedReader b = new BufferedReader(new FileReader(f));
+        				String line = "";
+        	            while ((line = b.readLine()) != null) {
+        	            	if (!line.substring(0,2).equalsIgnoreCase("id")) {    
+        	            		String t[] = line.split(",");
+        	            		names.add(t[1].replace("'",""));
+        	            	}
+        	            }
+        	            b.close();
+        	            b = null;
+                        lfirst = false;
+                    }
+                    
+                    if (lcomentarios) {
+	                    // build COMMENTS section
+	                    if (!form.getField("COMENT").getValueAsString().isEmpty()) {
+	                        lComments = true;
+	                        comments.add(dni + ":" + form.getField("COMENT").getValueAsString() + "\n");
+	                    }
+                    }
+                    // header with identification data
+                    String c = (lape1 ? "'" + form.getField("APE1").getValueAsString() + "'" : "null") + "," +
+                    		(lape2 ? "'" + form.getField("APE2").getValueAsString() + "'" : "null") + "," +
+                    		(lnom ? "'" + form.getField("NOMBRE").getValueAsString() + "'" : "null") + "," +
+                    		"'" + dni + "'";
+                    if (lhonor) {
+                    	PDCheckBox honor = (PDCheckBox) form.getField("HONOR");
+                        c = c + (honor.isChecked() ? ",1" : ",0");
+                    }
+
+                    // loop through the sol answers and get the contents
+                    for (String name : names) {
+                    	PDField f = form.getField(name);
+                		if (f instanceof PDTextField) {
+                			PDTextField ed = (PDTextField) f;				// text field: numeric or memo
+                			c = c + ",'" + ed.getValue().replace(".", ",") + "'";
+                		}
+                		if (f instanceof PDComboBox) {
+                			PDComboBox co = (PDComboBox) f;					// combobox field: closed answer
+                			c = c + ",'" + co.getValue().get(0) + "'";
+                		}
+                    }
+                    lines.add(c);                    
+                } else {
+                	// if there are no fields on the form the PDF file may be corrupted
+                    lProblems = true;
+                    if (form.getFields().isEmpty()) {
+                        problems.add(dni + "; no fields");
+                    }
+                }
+                
+                // close pdf form
+                pdf.close();
+                pdf = null;
+                form = null; 
+            }
+        }
+
+        // save data
+        Files.write(Paths.get(dir + "/datos_pecs.txt"), lines, Charset.forName("UTF-8"));
+        // save comments, if any
+        if (lComments) Files.write(Paths.get(dir + "/comentarios.txt"), comments, Charset.forName("UTF-8"));
+        // save problems, if any
+        if (lProblems) Files.write(Paths.get(dir + "/errores.txt"), problems, Charset.forName("UTF-8"));
 
         JOptionPane.showMessageDialog(null, "Proceso finalizado." +
                 (lComments ? " Hay comentarios." : "") + 
